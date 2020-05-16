@@ -70,6 +70,19 @@ kibuan/xmltv
 
 When the container exits the .xml file should be ready in the output folder.
 
+### Schedule daily update
+Create a bash script on your docker host that runs the container daily to update your xmltv tv guide. Use your docker hosts scheduler to run the script daily.
+
+Example script:
+```
+#!/bin/bash
+sudo docker container run --rm -i \
+-v '/volume1/system/docker/xmltv/container:/root/.xmltv' \
+-v '/volume1/system/docker/xmltv/container:/opt/xml' \
+-e 'XMLTV_DAYS=14' \
+kibuan/xmltv 
+```
+
 # Setup xmltv guide on Plex
 
 Follow [this guide](https://support.plex.tv/articles/using-an-xmltv-guide/) to setup Plex DVR to use your local xmltv.xml file.
