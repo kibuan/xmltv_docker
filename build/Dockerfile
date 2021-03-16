@@ -1,11 +1,12 @@
 # Dockerfile to generate CentOS 8 build container for XMLTV
 # Part 1
-# Source: https://github.com/XMLTV/xmltv/blob/master/.Dockerfile.centos-8
+# Source: https://raw.githubusercontent.com/kibuan/xmltv/master/ci/Dockerfile.centos-8
+
 
 FROM centos:8
 
 RUN dnf -y --nogpgcheck install epel-release dnf-plugins-core && \
-    dnf config-manager --set-enabled PowerTools epel
+    dnf config-manager --set-enabled powertools epel
 
 RUN dnf -y install \
     make \
@@ -47,6 +48,7 @@ RUN dnf -y install \
     perl-Try-Tiny \
     perl-Unicode-String \
     perl-URI \
+    perl-URI-Encode \
     perl-XML-DOM \
     perl-XML-LibXML \
     perl-XML-LibXSLT \
@@ -54,18 +56,14 @@ RUN dnf -y install \
     perl-XML-Simple \
     perl-XML-TreePP \
     perl-XML-Twig \
-    perl-XML-Writer 
+    perl-XML-Writer
 
 #Part 2 - maintainer kibuan
 
+RUN dnf -y install --nogpgcheck https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-8.noarch.rpm https://mirrors.rpmfusion.org/nonfree/el/rpmfusion-nonfree-release-8.noarch.rpm &&\
+    dnf -y install xmltv
+
 WORKDIR /usr/src/app
-
-RUN yum -y install git
-
-COPY install-xmltv.sh .
-
-RUN chmod +x /usr/src/app/install-xmltv.sh \
-    && /usr/src/app/install-xmltv.sh
 
 ENTRYPOINT exec /usr/src/app/grab.sh
 
