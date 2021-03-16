@@ -1,6 +1,6 @@
 # Dockerfile to generate CentOS 8 build container for XMLTV
 # Part 1
-# Source: https://raw.githubusercontent.com/kibuan/xmltv/master/ci/Dockerfile.centos-8
+# Source: https://github.com/xmltv/xmltv/blob/master/ci/Dockerfile.centos-8
 
 
 FROM centos:8

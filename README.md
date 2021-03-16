@@ -15,14 +15,14 @@ These instructions will guide you to build the xmltv docker image and get the xm
 
 ```
 Clone the files in this Github repository to a local folder on your docker host 
-(in this guide we use: /volume1/system/docker/xmltv/ on the host)
+(in this guide we use: /volume1/docker/xmltv/ on the host)
 ```
 
 ### Build a docker image file using the Dockerfile in this repository
 
 **Open a SSH connection to your docker host**
 ```
-sudo docker image build -t kibuan/xmltv /volume1/system/docker/xmltv/build
+sudo docker image build -t kibuan/xmltv /volume1/docker/xmltv/build
 ```
 
 ### Docker container Mounts and Environment variables
@@ -31,8 +31,8 @@ sudo docker image build -t kibuan/xmltv /volume1/system/docker/xmltv/build
   
 | Mount | Host folder  | Example
 |--|--|--|
-|/root/.xmltv | 'Container work-dir' - folder to save your xmltv configuration and cache files on your docker-host | ```-v '/volume1/system/docker/xmltv/container:/root/.xmltv'```
-|/opt/xml | xmltv .xml file output dir on your docker-host | ```-v '/volume1/system/docker/xmltv/container:/opt/xml'```
+|/root/.xmltv | 'Container work-dir' - folder to save your xmltv configuration and cache files on your docker-host | ```-v '/volume1/docker/xmltv/container:/root/.xmltv'```
+|/opt/xml | xmltv .xml file output dir on your docker-host | ```-v '/volume1/docker/xmltv/container:/opt/xml'```
 
 **Environment variables (OPTIONAL)**
 |Environment variable | Description | Example
@@ -51,7 +51,7 @@ If you already have a xmltv grabber configuration file in the container 'work-di
 
 ```
 sudo docker container run --rm -i \
--v '/volume1/system/docker/xmltv/container:/root/.xmltv' \
+-v '/volume1/docker/xmltv/container:/root/.xmltv' \
 kibuan/xmltv 
 ```
 
@@ -63,8 +63,8 @@ Follow the instructions in the xmltv setup guide. When the container exits you s
 
 ```
 sudo docker container run --rm -i \
--v '/volume1/system/docker/xmltv/container:/root/.xmltv' \
--v '/volume1/system/docker/xmltv/container:/opt/xml' \
+-v '/volume1/docker/xmltv/container:/root/.xmltv' \
+-v '/volume1/docker/xmltv/container:/opt/xml' \
 kibuan/xmltv 
 ```
 
@@ -77,8 +77,8 @@ Example script:
 ```
 #!/bin/bash
 sudo docker container run --rm -i \
--v '/volume1/system/docker/xmltv/container:/root/.xmltv' \
--v '/volume1/system/docker/xmltv/container:/opt/xml' \
+-v '/volume1/docker/xmltv/container:/root/.xmltv' \
+-v '/volume1/docker/xmltv/container:/opt/xml' \
 -e 'XMLTV_DAYS=14' \
 kibuan/xmltv 
 ```
