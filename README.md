@@ -7,6 +7,12 @@ A docker implementation of [xmltv](https://github.com/XMLTV/xmltv) I created to 
 
 Follow this guide to create a xmltv docker image on your docker host. The image is used to create and RUN a temporary docker container. When the container run's it will update the xmltv output file and the container will then be trashed. Schedule the docker RUN command on your host daily to update your xmltv.xml file.
 
+## Updates 
+
+3/8-2021
+
+Added support for meetv.dk grabber (tv_grab_dk_meetv) created by Klaus Madsen: https://sourceforge.net/p/xmltvdk/mailman/message/37168487/
+
 ## Getting Started
 
 These instructions will guide you to build the xmltv docker image and get the xmltv container up and running.
@@ -38,7 +44,7 @@ sudo docker image build -t kibuan/xmltv /volume1/docker/xmltv/build
 |Environment variable | Description | Example
 |--|--|--|
 |OUTPUT_XML_FILENAME | The file name of the xmltv output .xml file (default=-grabber-.xml) | ```-e 'xmltv.xml'```
-|XMLTV_GRABBER |The name of the xmltv grabber you want to use (default=tv_grab_eu_xmltvse)| ```-e 'tv_grab_dk_dr'```
+|XMLTV_GRABBER |The name of the xmltv grabber you want to use (default=tv_grab_eu_xmltvse)| ```-e 'tv_grab_dk_meetv'```
 |XMLTV_DAYS |The number of days you want to grab (default=7) | ```-e '3'```
 
 ### Generate xmltv configuration file
