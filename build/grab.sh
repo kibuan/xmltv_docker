@@ -14,8 +14,8 @@ if test -f "$FILE"; then
     if [[ -z "$OUTPUT_XML_FILENAME" ]]; then
     OUTPUT_XML_FILENAME=${XMLTV_GRABBER}.xml
     fi
-    echo Running: tv_grab_eu_xmltvse --config-file /root/.xmltv/${XMLTV_GRABBER}.conf --output /opt/xml/${OUTPUT_XML_FILENAME} --days ${XMLTV_DAYS}
-    tv_grab_eu_xmltvse --config-file /root/.xmltv/${XMLTV_GRABBER}.conf --output /opt/xml/${OUTPUT_XML_FILENAME} --days ${XMLTV_DAYS}
+    echo Running: ${XMLTV_GRABBER} --config-file /root/.xmltv/${XMLTV_GRABBER}.conf --output /opt/xml/${OUTPUT_XML_FILENAME} --days ${XMLTV_DAYS}
+    ${XMLTV_GRABBER} --config-file /root/.xmltv/${XMLTV_GRABBER}.conf --output /opt/xml/${OUTPUT_XML_FILENAME} --days ${XMLTV_DAYS}
     echo "grabber finished, exiting..."
 else
     echo "$FILE does not exist. Running: '${XMLTV_GRABBER} --configure'"
