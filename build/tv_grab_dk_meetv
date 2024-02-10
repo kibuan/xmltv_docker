@@ -163,7 +163,8 @@ sub get_channel_list($) {
     foreach my $chan (@$channels) {
         # We use the externaId as the id, because this will present
         # the channels in a nice order.
-        my $id = $chan->{externalId} . $id_postfix;
+        #my $id = $chan->{externalId} . $id_postfix;
+        my $id = sprintf("meetv_%05d", $chan->{externalId});
         $chanlist{$id} = {
             id             => $id,
             icon           => [ { src => $chan->{logoUrl} } ],
