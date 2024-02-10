@@ -1,0 +1,336 @@
+#!/usr/bin/perl
+#
+#  Copyright (C) 2020 Klaus S. Madsen
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+######################################################################
+# Udover XMLTV kræves JSON og DateTime, som på
+# Debian / Ubuntu kan installeres med:
+#
+#   sudo apt install libjson-perl libdatetime-perl
+#
+# Kun testet på Linux.
+# Kommentarer til: Klaus S. Madsen <ksm@42.dk>
+
+use strict;
+use warnings;
+use utf8;
+
+binmode(STDOUT, ":utf8");
+binmode(STDERR, ":utf8");
+
+use JSON;
+use XMLTV;
+use XMLTV::Options qw/ParseOptions/;
+use XMLTV::Configure::Writer;
+
+use LWP::UserAgent;
+use IO::Scalar;
+
+use DateTime;
+use Try::Tiny;
+use Data::Dumper;
+
+my $debug = 0; # Plenty of extra output.
+
+my $grabber_name     = 'tv_grab_dk_meetv';
+my $id_postfix       = '.meetv.dk';
+my $default_root_url = 'https://meetv-api.meetv.no/';
+my $default_site     = 'me-dk';
+
+my %grabber_tags = (
+    'source-info-url'     => 'https://www.meetv.dk/tvguide/',
+    'source-info-name'    => 'MEE TV Oversigt',
+    'generator-info-name' => 'XMLTV',
+);
+
+sub config_stage {
+    my( $stage, $conf ) = @_;
+    my $result;
+
+    $stage eq "start" || die "Unknown stage $stage";
+
+    my $writer = new XMLTV::Configure::Writer( OUTPUT => \$result,
+                                               encoding => 'utf-8' );
+    if ( $stage eq 'start' ) {
+        $writer->start( { grabber => $grabber_name } );
+        $writer->start_selectone( {
+            id          => 'accept-copyright-disclaimer',
+            title       => [ [ 'Acceptér ansvarsfraskrivelse', 'da'],
+                             [ 'Accept disclaimer', 'en'] ],
+            description => [
+                [ "Data fra TV2's programoversigt er "
+                      . "beskyttet af loven om ophavsret, "
+                      . "og må kun anvendes til personlige, "
+                      . "ikke-kommercielle formål. "
+                      . "Dette programs forfatter(e) kan ikke "
+                      . "holdes ansvarlig for evt. misbrug.", 'da' ],
+                [ "Data from TV2's program guide is "
+                      . "protected by copyright law and may "
+                      . "only be used for personal, non-commercial "
+                      . "purposes. The author(s) "
+                      . "of this program accept no responsibility "
+                      . "for any mis-use.", 'en' ] ] } );
+        $writer->write_option( {
+            value => 'reject',
+            text  => [ [ 'Jeg accepterer IKKE betingelserne', 'da'],
+                       [ 'I do NOT accept these conditions', 'en'] ] } );
+        $writer->write_option( {
+            value => 'accept',
+            text  => [ [ 'Jeg accepterer betingelserne', 'da'],
+                       [ 'I accept these conditions', 'en'] ] } );
+        $writer->end_selectone();
+
+        $writer->write_string( {
+            id          => 'root-url',
+            title       => [ [ 'Root URL for grabbing data', 'en' ],
+                             [ 'Grund-URL for grabberen', 'da' ] ],
+            description => [
+                [ 'Provide the URL of MEE\'s program guide '
+                      . 'api end-point, '
+                      . 'including the trailing slash.', 'en' ],
+                [ 'Indtast URL\'en på MEE\'s tv-oversigs api'
+                      . ' end-point, inklusive den '
+                      . 'efterfølgende skråstreg.', 'da' ] ],
+            default     => $default_root_url } );
+        $writer->write_string( {
+            id          => 'site',
+            title       => [ [ 'Site parameter for grabbing data', 'en' ],
+                             [ 'Site parameter for grabberen', 'da' ] ],
+            description => [
+                [ 'Provide the value of the site parameter '
+                      . 'for the grabber. Keep default for Danish.', 'en' ],
+                [ 'Indtast værdien for site parametren. '
+                      . 'Behold defaulten for dansk.', 'da' ] ],
+            default     => $default_site } );
+    }
+    $writer->end( 'select-channels' );
+
+    return $result;
+}
+
+my $ua = LWP::UserAgent->new;
+$ua->agent("xmltv/$XMLTV::VERSION");
+
+sub getUrl($) {
+    my ( $url ) = @_;
+    print STDERR "Get: $url\n" if $debug;
+
+    my $req = HTTP::Request->new(GET => $url);
+    my $res = $ua->request($req);
+
+    if ($res->is_success) {
+        return Encode::decode('utf-8', $res->content());
+    } else {
+        print STDERR "Error: " . $res->status_line . " on url: " . $url . "\n";
+        return 0;
+    }
+}
+
+sub list_channels($$) {
+    my( $conf, $opt ) = @_;
+    my $chanlist = &get_channel_list($conf);
+    my $result="";
+    my $fh = new IO::Scalar \$result;
+    my $oldfh = select( $fh );
+    my $writer = new XMLTV::Writer(OUTPUT => $fh, encoding => 'utf-8');
+    $writer->start(\%grabber_tags);
+    $writer->write_channels($chanlist);
+    $writer->end();
+    select( $oldfh );
+    $fh->close();
+
+    return $result;
+}
+
+sub get_channel_list($) {
+    my ( $conf ) = @_;
+    my $channels = get_mee_channel_list($conf);
+    my %chanlist;
+    foreach my $chan (@$channels) {
+        # We use the externaId as the id, because this will present
+        # the channels in a nice order.
+        my $id = $chan->{externalId} . $id_postfix;
+        $chanlist{$id} = {
+            id             => $id,
+            icon           => [ { src => $chan->{logoUrl} } ],
+            'display-name' => [ [ $chan->{name}, 'da' ] ],
+            '_chan_id'     => $chan->{id},
+        };
+    }
+
+    return \%chanlist;
+}
+
+sub get_mee_channel_list($)
+{
+    my ( $conf ) = @_;
+    # https://meetv-api.meetv.no/channels/?limit=250&site=me-dk
+    my $url = $conf->{'root-url'}->[0] . 'channels/?limit=250&site=' . $conf->{site}->[0];
+
+    my $content = getUrl($url) || return 0;
+    print STDERR "Got: $content\n"  if $debug == 2;
+    my $channels;
+    try {
+        $channels = from_json($content);
+    } catch {
+        die "Failed to get page info: $_";
+    };
+
+    return $channels->{items};
+}
+
+sub date_to_xmltv($) {
+    my $d = shift;
+    my $dt;
+    try {
+        $dt = DateTime->from_epoch( epoch => $d / 1000 );
+    } catch {
+        die "Cannot convert date $d: $_";
+    };
+    return $dt->format_cldr('yyyyMMddHHmmss ZZZ');
+}
+
+sub get_schedules($$$) {
+    my ($conf,  $channels, $day ) = @_;
+
+    my @schedules = ();
+
+    my $date = DateTime->today()->add( days => $day );
+    my $from_date = $date->ymd('-');
+    my $to_date = $date->add( days => 1 )->ymd('-');
+
+    # https://meetv-api.meetv.no/events/channels/?site=me-dk&dateFrom=2020-12-02+23:00:00&channelIds[]=DR1&channelIds[]=DR2&channelIds[]=TV2DANMARK&channelIds[]=TV2DZULU&channelIds[]=TV2DCHARLIE&channelIds[]=TV3DANMARK
+    my $url = $conf->{'root-url'}->[0]
+        . 'events/channels/?site=' . $conf->{site}->[0]
+        . '&dateFrom=' . $from_date . '+00:00:00'
+        . '&dateTo=' . $to_date . '+00:00:00&'
+        . join('&', map { "channelIds[]=" .$_->{_chan_id} } @$channels );
+
+    my $content = getUrl($url) || return 0;
+
+    my %id_mapping = map { $_->{_chan_id} => $_->{id} } @$channels;
+
+    my @results;
+    my $parsed = from_json( $content );
+    foreach my $program (@{$parsed->{items}}) {
+        print STDERR Dumper $program if $debug == 2;
+        my %p = (
+            channel => $id_mapping{$program->{channel}->{id}},
+            start   => date_to_xmltv($program->{startTime}),
+            stop    => date_to_xmltv($program->{endTime}),
+        );
+
+        $p{title} = [ [ $program->{name}, 'da' ] ];
+#        $p{'sub-title'} = [ [ $program->{teaser}, 'da' ] ] if $program->{teaser};
+        $p{'previously-shown'} = {} if $program->{rerun};
+
+        if (my $category = $program->{categorization}->{genre} ) {
+            $p{category} = [ [ $category, 'en' ] ];
+        }
+
+        if (my $description = $program->{description}) {
+            $p{desc} = [ [ $description, 'da' ] ];
+        }
+
+        ########################################
+        # Episode
+        if (my $episode_hash = $program->{episode}) {
+            my $season = $episode_hash->{season};
+            my $episode = $episode_hash->{number};
+            my $last_episode = $episode_hash->{lastEpisodeNumber};
+
+            my $episode_str = "";
+            if ($episode) {
+                $episode_str .= $season - 1 if $season;
+                $episode_str .= " . ";
+                $episode_str .= $episode - 1;
+                $episode_str .= "/" . ($last_episode - 1) if $last_episode;
+                $episode_str .= " . ";
+                $p{'episode-num'} = [ [ $episode_str, "xmltv_ns" ] ];
+                $p{'sub-title'} = [ [ $episode_hash->{title}, 'da' ] ] if $episode_hash->{title};
+            }
+        }
+
+        if (my $country = $program->{production_country}->{nice} ){
+            $p{country} = [ [ $country, 'da' ] ];
+        }
+
+        # Sanity checks..
+        if (!$p{start}) { warn("No 'START' attribute"); next; }
+        if (!$p{stop}) { warn("No 'START' attribute"); next; }
+        if (!$p{title}) { warn("No 'TITLE' attribute"); next; }
+
+        push(@results, \%p);
+    }
+    return \@results;
+}
+
+my $opt;
+my $conf;
+( $opt, $conf ) = ParseOptions( {
+    grabber_name     => $grabber_name,
+    capabilities     => [qw/baseline manualconfig tkconfig apiconfig/],
+    stage_sub        => \&config_stage,
+    listchannels_sub => \&list_channels,
+    version          => '$Id: ' . $grabber_name . ',v 0.0.1 2020-12-03',
+    description      => "TV Oversigten fra meetv.dk ".
+        "(https://www.meetv.dk/tvguide/)",
+} );
+
+my %writer_args = ( encoding => 'utf-8' );
+if (defined $opt->{output}) {
+    my $fh = IO::File->new($opt->{output}, ">:utf8");
+    die "Cannot write to $opt->{output}" if not $fh;
+    $writer_args{OUTPUT} = $fh;
+}
+
+my $writer = new XMLTV::Writer(%writer_args);
+
+$writer->start(\%grabber_tags);
+
+my $chanlist = &get_channel_list($conf) || die "Couldn't get channel list";
+
+# Check channels specified are valid
+my @channels;
+foreach my $cid (@{$conf->{'channel'}}) {
+    my $chan = $chanlist->{$cid};
+    if (!$chan) {
+        warn("Unknown channel ".$cid." in config file\n");
+    } else {
+        $writer->write_channel($chan);
+        push (@channels, $chan);
+    }
+}
+
+# data uses offset from today in days.
+for (my $c = 0; $c < $opt->{days}; $c++) {
+    my @tmp_channels = @channels;
+    while (my @slice = splice(@tmp_channels, 0, 9)) {
+        my $day = $c;
+        $day += $opt->{offset} if ($opt->{offset});
+        my $schedules = get_schedules($conf, \@slice, $day);
+        foreach my $s (@$schedules) {
+            if ("HASH" ne ref($s)) {
+                warn("Weird listing:\n");
+                print STDERR Dumper $s;
+            } else {
+                $writer->write_programme($s);
+            }
+        }
+    }
+}
+$writer->end();
