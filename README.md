@@ -9,6 +9,9 @@ Follow this guide to create a xmltv docker image on your docker host. The image 
 
 ## Updates 
 
+10/2-2024
+Updated tv_grab_dk_meetv. Fixes problem where the EPG guide in Plex showed the wrong arrings some channels.
+
 3/8-2021
 
 Added support for meetv.dk grabber (tv_grab_dk_meetv) created by Klaus Madsen: https://sourceforge.net/p/xmltvdk/mailman/message/37168487/

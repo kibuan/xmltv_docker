@@ -63,12 +63,12 @@ RUN dnf -y install \
 RUN dnf -y install --nogpgcheck https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-8.noarch.rpm https://mirrors.rpmfusion.org/nonfree/el/rpmfusion-nonfree-release-8.noarch.rpm &&\
     dnf -y install xmltv
 
-RUN curl -o /bin/tv_grab_dk_meetv https://sourceforge.net/p/xmltvdk/code/194/tree/trunk/tv_grab_dk_meetv?format=raw &&\
-    chmod +x /bin/tv_grab_dk_meetv
-
 WORKDIR /usr/src/app
 
 ENTRYPOINT exec /usr/src/app/grab.sh
 
 COPY grab.sh .
 RUN chmod +x /usr/src/app/grab.sh
+
+COPY tv_grab_dk_meetv /bin/tv_grab_dk_meetv
+RUN chmod +x /bin/tv_grab_dk_meetv
