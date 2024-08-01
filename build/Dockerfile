@@ -1,17 +1,16 @@
-# Dockerfile to generate CentOS 8 build container for XMLTV
+# Dockerfile to generate Fedora 40 build container for XMLTV
 # Part 1
-# Source: https://github.com/xmltv/xmltv/blob/master/ci/Dockerfile.centos-8
+# Source: https://github.com/xmltv/xmltv/blob/master/ci/Dockerfile.fedora-40
 
+FROM fedora:40
 
-FROM centos:8
+LABEL maintainer="Nick Morrott <knowledgejunkie@gmail.com>"
 
-RUN dnf -y --nogpgcheck install epel-release dnf-plugins-core && \
-    dnf config-manager --set-enabled powertools epel
-
-RUN dnf -y install \
+RUN yum -y install \
     make \
-    perl-core \
+    perl \
     perl-Archive-Zip \
+    perl-CGI \
     perl-Data-Dump \
     perl-Date-Calc \
     perl-Date-Manip \
@@ -36,6 +35,7 @@ RUN dnf -y install \
     perl-libwww-perl \
     perl-Lingua-Preferred \
     perl-List-MoreUtils \
+    perl-Log-TraceMessages \
     perl-LWP-Protocol-https \
     perl-LWP-UserAgent-Determined \
     perl-PerlIO-gzip \
@@ -60,8 +60,8 @@ RUN dnf -y install \
 
 #Part 2 - maintainer kibuan
 
-RUN dnf -y install --nogpgcheck https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-8.noarch.rpm https://mirrors.rpmfusion.org/nonfree/el/rpmfusion-nonfree-release-8.noarch.rpm &&\
-    dnf -y install xmltv
+RUN yum -y install --nogpgcheck https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-40.noarch.rpm https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-40.noarch.rpm &&\
+    yum -y install xmltv
 
 WORKDIR /usr/src/app
 
