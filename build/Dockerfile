@@ -4,8 +4,6 @@
 
 FROM fedora:40
 
-LABEL maintainer="Nick Morrott <knowledgejunkie@gmail.com>"
-
 RUN yum -y install \
     make \
     perl \
